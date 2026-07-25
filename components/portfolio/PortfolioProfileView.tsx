@@ -1,8 +1,12 @@
+"use client";
+
 import { AllocationChart } from "@/components/ui/AllocationChart";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Badge";
+import { HistoryChart } from "@/components/ui/HistoryChart";
 import { HoldingsTable } from "@/components/ui/HoldingsTable";
 import { StatCard } from "@/components/ui/StatCard";
+import { usePortfolioHistory } from "@/lib/hooks/usePortfolioHistory";
 import { PortfolioProfile } from "@/lib/types/portfolio";
 
 const VERIFIED_TOOLTIP =
@@ -26,6 +30,7 @@ interface PortfolioProfileViewProps {
 export function PortfolioProfileView({ profile, isOwner }: PortfolioProfileViewProps) {
   const { portfolio, holdings, analytics, activity } = profile;
   const isVerified = portfolio.portfolioType === "verified";
+  const { data: history } = usePortfolioHistory(portfolio.id);
 
   return (
     <div className="flex flex-col gap-8">
@@ -74,6 +79,13 @@ export function PortfolioProfileView({ profile, isOwner }: PortfolioProfileViewP
               description="Since first synced on Nexarch"
             />
             <StatCard label="Holdings" value={String(analytics.health.holdingCount)} />
+            {analytics.health.volatility !== null && (
+              <StatCard
+                label="Volatility"
+                value={`${(analytics.health.volatility * 100).toFixed(1)}%`}
+                description="Annualized, trailing year"
+              />
+            )}
           </div>
         </section>
       )}
@@ -92,6 +104,13 @@ export function PortfolioProfileView({ profile, isOwner }: PortfolioProfileViewP
             title={`${portfolio.displayName}'s sector allocation`}
             allocation={analytics.sectorAllocation}
           />
+        </section>
+      )}
+
+      {history && history.length >= 2 && (
+        <section>
+          <h2 className="mb-3 text-sm font-semibold text-text-secondary">Value Over Time</h2>
+          <HistoryChart entries={history} />
         </section>
       )}
 

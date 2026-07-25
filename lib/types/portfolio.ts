@@ -79,6 +79,10 @@ export interface PortfolioHealthResponse {
   sector_concentration_hhi: number;
   portfolio_age_days: number;
   holding_count: number;
+  /** Annualized volatility (ADR-024) — null wherever there isn't enough
+   * real price history to compute it honestly (e.g. no broker connection,
+   * or too few data points). Never a fabricated number. */
+  volatility: number | null;
 }
 
 export interface PortfolioHealth {
@@ -86,6 +90,7 @@ export interface PortfolioHealth {
   sectorConcentrationHhi: number;
   portfolioAgeDays: number;
   holdingCount: number;
+  volatility: number | null;
 }
 
 export interface PortfolioAnalyticsResponse {
@@ -117,6 +122,7 @@ export function toPortfolioAnalytics(a: PortfolioAnalyticsResponse): PortfolioAn
           sectorConcentrationHhi: a.health.sector_concentration_hhi,
           portfolioAgeDays: a.health.portfolio_age_days,
           holdingCount: a.health.holding_count,
+          volatility: a.health.volatility,
         }
       : null,
     strategyOverview: a.strategy_overview,
