@@ -1,4 +1,22 @@
-/* globals.css — baseline reset; real design system added in Milestone 2 */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Color tokens — see docs/design-system.md. Dark mode only for Milestone 4a;
+   no light/dark toggle is being built yet (see the plan's ADR notes). */
+:root {
+  --bg-primary: #0b0b0e;
+  --bg-surface: #15151b;
+  --bg-surface-hover: #1d1d24;
+  --text-primary: #f5f5f7;
+  --text-secondary: #9a9aa5;
+  --accent: #6c6cf2;
+  --accent-hover: #8484f5;
+  --positive: #3dd68c;
+  --negative: #f2555a;
+  --border: #242430;
+}
+
 *,
 *::before,
 *::after {
@@ -8,6 +26,7 @@
 }
 
 body {
-  font-family: system-ui, sans-serif;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
   line-height: 1.5;
 }
