@@ -3,12 +3,14 @@
 import { InvestorCard } from "@/components/portfolio/InvestorCard";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { useFollowingIds } from "@/lib/hooks/useFollowingIds";
+import { useMyPortfolio } from "@/lib/hooks/useMyPortfolio";
 import { usePublicInvestors } from "@/lib/hooks/usePublicInvestors";
 
 export default function LibraryPage() {
   const { user } = useAuth();
   const { data: investors, isLoading, error } = usePublicInvestors();
   const { data: followingIds } = useFollowingIds(!!user);
+  const { data: myPortfolio } = useMyPortfolio({ enabled: !!user });
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-10">
@@ -28,6 +30,8 @@ export default function LibraryPage() {
               key={investor.portfolioId}
               investor={investor}
               isFollowing={followingIds?.has(investor.portfolioId ?? "") ?? false}
+              isOwnPortfolio={!!myPortfolio && investor.portfolioId === myPortfolio.id}
+              viewerPortfolioId={myPortfolio?.id ?? null}
             />
           ))}
         </div>

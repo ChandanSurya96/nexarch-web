@@ -21,10 +21,20 @@ interface InvestorCardProps {
    * yourself isn't a real relationship (matches the backend's
    * CANNOT_FOLLOW_OWN_PORTFOLIO rejection in follow_service.py). */
   isOwnPortfolio?: boolean;
+  /** The viewer's own portfolio id, if they have one — enables a "Compare
+   * with mine" link (Milestone 6). Link-only entry into /compare, no
+   * picker (ADR-027) — this is one of the two places that already has
+   * both ids at hand. */
+  viewerPortfolioId?: string | null;
 }
 
 /** The shared list-item summary for both the Discovery Feed and the Public Investor Library. */
-export function InvestorCard({ investor, isFollowing, isOwnPortfolio = false }: InvestorCardProps) {
+export function InvestorCard({
+  investor,
+  isFollowing,
+  isOwnPortfolio = false,
+  viewerPortfolioId = null,
+}: InvestorCardProps) {
   const { user } = useAuth();
   const follow = useFollow(investor.portfolioId ?? "");
   const unfollow = useUnfollow(investor.portfolioId ?? "");
@@ -77,13 +87,23 @@ export function InvestorCard({ investor, isFollowing, isOwnPortfolio = false }: 
         </div>
       </Link>
       {user && !isOwnPortfolio && (
-        <Button
-          variant={isFollowing ? "secondary" : "primary"}
-          onClick={() => (isFollowing ? unfollow.mutate() : follow.mutate())}
-          disabled={follow.isPending || unfollow.isPending}
-        >
-          {isFollowing ? "Unfollow" : "Follow"}
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant={isFollowing ? "secondary" : "primary"}
+            onClick={() => (isFollowing ? unfollow.mutate() : follow.mutate())}
+            disabled={follow.isPending || unfollow.isPending}
+          >
+            {isFollowing ? "Unfollow" : "Follow"}
+          </Button>
+          {viewerPortfolioId && (
+            <Link
+              href={`/compare?a=${viewerPortfolioId}&b=${investor.portfolioId}`}
+              className="inline-flex items-center justify-center rounded-md border border-border px-4 py-2 text-sm font-medium text-text-primary hover:bg-bg-surface-hover"
+            >
+              Compare with mine
+            </Link>
+          )}
+        </div>
       )}
     </Card>
   );

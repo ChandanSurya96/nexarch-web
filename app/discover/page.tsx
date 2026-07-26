@@ -108,6 +108,7 @@ export default function DiscoverPage() {
                   investor={investor}
                   isFollowing={followingIds?.has(investor.portfolioId ?? "") ?? false}
                   isOwnPortfolio={!!myPortfolio && investor.portfolioId === myPortfolio.id}
+                  viewerPortfolioId={myPortfolio?.id ?? null}
                 />
               ))}
             </div>
