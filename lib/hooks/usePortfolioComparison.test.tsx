@@ -40,9 +40,11 @@ function sampleAnalytics(portfolioId: string, totalValue: number) {
       portfolio_age_days: 10,
       holding_count: 1,
       volatility: null,
+      momentum: null,
     },
     strategy_overview: null,
     as_of: "2026-07-25",
+    strategy_categorization: [],
   };
 }
 

@@ -32,6 +32,13 @@ export function PortfolioProfileView({ profile, isOwner }: PortfolioProfileViewP
   const isVerified = portfolio.portfolioType === "verified";
   const { data: history } = usePortfolioHistory(portfolio.id);
 
+  // Rules-based auto-categorization explanations (Milestone 7, ADR-028) —
+  // always [] for Public Investor Library portfolios (manually curated
+  // tags, not rule-derived), so those tags simply render without a tooltip.
+  const explanationBySlug = new Map(
+    analytics.strategyCategorization.map((c) => [c.slug, c.explanation])
+  );
+
   return (
     <div className="flex flex-col gap-8">
       <header className="flex items-start gap-4">
@@ -47,7 +54,7 @@ export function PortfolioProfileView({ profile, isOwner }: PortfolioProfileViewP
           {portfolio.strategyTags.length > 0 && (
             <div className="mt-2 flex flex-wrap gap-1.5">
               {portfolio.strategyTags.map((tag) => (
-                <Badge key={tag} variant="tag">
+                <Badge key={tag} variant="tag" title={explanationBySlug.get(tag)}>
                   {tag}
                 </Badge>
               ))}
@@ -84,6 +91,13 @@ export function PortfolioProfileView({ profile, isOwner }: PortfolioProfileViewP
                 label="Volatility"
                 value={`${(analytics.health.volatility * 100).toFixed(1)}%`}
                 description="Annualized, trailing year"
+              />
+            )}
+            {analytics.health.momentum !== null && (
+              <StatCard
+                label="Momentum"
+                value={`${analytics.health.momentum >= 0 ? "+" : ""}${(analytics.health.momentum * 100).toFixed(1)}%`}
+                description="Trailing ~90 days"
               />
             )}
           </div>

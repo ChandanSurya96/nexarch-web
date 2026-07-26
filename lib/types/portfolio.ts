@@ -83,6 +83,9 @@ export interface PortfolioHealthResponse {
    * real price history to compute it honestly (e.g. no broker connection,
    * or too few data points). Never a fabricated number. */
   volatility: number | null;
+  /** Trailing ~90-day value-weighted return (ADR-028) — null under the
+   * same conditions as volatility. Feeds the Momentum strategy category. */
+  momentum: number | null;
 }
 
 export interface PortfolioHealth {
@@ -91,6 +94,19 @@ export interface PortfolioHealth {
   portfolioAgeDays: number;
   holdingCount: number;
   volatility: number | null;
+  momentum: number | null;
+}
+
+/** One rules-based strategy-category match (Milestone 7, ADR-028) — same
+ * shape wire/domain, no snake_case fields to convert. `explanation` cites
+ * the actual observed number against its threshold, descriptive only, never
+ * a recommendation (docs/security.md). Only present for verified portfolios
+ * with a synced snapshot — always [] for Public Investor Library entries,
+ * whose tags are manually curated, not rule-derived. */
+export interface StrategyCategorizationEntry {
+  slug: string;
+  name: string;
+  explanation: string;
 }
 
 export interface PortfolioAnalyticsResponse {
@@ -100,6 +116,7 @@ export interface PortfolioAnalyticsResponse {
   health: PortfolioHealthResponse | null;
   strategy_overview: string | null;
   as_of: string | null;
+  strategy_categorization: StrategyCategorizationEntry[];
 }
 
 export interface PortfolioAnalytics {
@@ -109,6 +126,7 @@ export interface PortfolioAnalytics {
   health: PortfolioHealth | null;
   strategyOverview: string | null;
   asOf: string | null;
+  strategyCategorization: StrategyCategorizationEntry[];
 }
 
 export function toPortfolioAnalytics(a: PortfolioAnalyticsResponse): PortfolioAnalytics {
@@ -123,10 +141,12 @@ export function toPortfolioAnalytics(a: PortfolioAnalyticsResponse): PortfolioAn
           portfolioAgeDays: a.health.portfolio_age_days,
           holdingCount: a.health.holding_count,
           volatility: a.health.volatility,
+          momentum: a.health.momentum,
         }
       : null,
     strategyOverview: a.strategy_overview,
     asOf: a.as_of,
+    strategyCategorization: a.strategy_categorization,
   };
 }
 
