@@ -113,6 +113,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(async () => {
     try {
       await apiFetch("/auth/logout", { method: "POST" });
+    } catch {
+      // /logout requires a valid access token (@jwt_required()) — after
+      // 15+ minutes idle that token has expired, so the request never
+      // reaches the server and the session is never revoked there. The
+      // refresh cookie outlives it by a lot (30 days vs 15 minutes), so
+      // refresh once and retry before giving up.
+      try {
+        const { access_token } = await apiFetch<TokenResponse>("/auth/refresh", {
+          method: "POST",
+        });
+        setAccessToken(access_token);
+        await apiFetch("/auth/logout", { method: "POST" });
+      } catch {
+        // No valid refresh cookie either — there's no session left to revoke.
+      }
     } finally {
       setAccessToken(null);
       setUser(null);

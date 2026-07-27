@@ -98,3 +98,82 @@ describe("AuthProvider silent refresh on mount", () => {
     expect(setAccessToken).toHaveBeenCalledWith("login-token");
   });
 });
+
+describe("AuthProvider logout", () => {
+  beforeEach(() => {
+    apiFetch.mockReset();
+    setAccessToken.mockReset();
+  });
+
+  async function renderSignedOut() {
+    apiFetch.mockImplementation(async (path: string) => {
+      if (path === "/auth/refresh") {
+        throw new ApiError("UNAUTHORIZED", "Refresh token missing or invalid.", 401);
+      }
+      throw new Error(`unexpected path ${path}`);
+    });
+    const { result } = renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    apiFetch.mockReset();
+    return result;
+  }
+
+  it("clears client state on a plain successful logout", async () => {
+    const result = await renderSignedOut();
+    apiFetch.mockImplementation(async (path: string) => {
+      if (path === "/auth/logout") return {};
+      throw new Error(`unexpected path ${path}`);
+    });
+
+    await act(async () => {
+      await result.current.logout();
+    });
+
+    expect(apiFetch).toHaveBeenCalledTimes(1);
+    expect(setAccessToken).toHaveBeenCalledWith(null);
+  });
+
+  it("refreshes and retries once when the access token has expired from idling", async () => {
+    const result = await renderSignedOut();
+    let logoutCallCount = 0;
+    apiFetch.mockImplementation(async (path: string) => {
+      if (path === "/auth/logout") {
+        logoutCallCount += 1;
+        if (logoutCallCount === 1) {
+          throw new ApiError("ACCESS_TOKEN_EXPIRED", "Your access token has expired.", 401);
+        }
+        return {};
+      }
+      if (path === "/auth/refresh") return { access_token: "refreshed-token" };
+      throw new Error(`unexpected path ${path}`);
+    });
+
+    await act(async () => {
+      await result.current.logout();
+    });
+
+    expect(logoutCallCount).toBe(2);
+    expect(setAccessToken).toHaveBeenCalledWith("refreshed-token");
+    // The final call must be the null clear, not left on the refreshed token.
+    expect(setAccessToken).toHaveBeenLastCalledWith(null);
+  });
+
+  it("still clears client state when neither logout nor refresh succeed", async () => {
+    const result = await renderSignedOut();
+    apiFetch.mockImplementation(async (path: string) => {
+      if (path === "/auth/logout") {
+        throw new ApiError("ACCESS_TOKEN_EXPIRED", "Your access token has expired.", 401);
+      }
+      if (path === "/auth/refresh") {
+        throw new ApiError("REFRESH_SESSION_INVALID", "This session has expired.", 401);
+      }
+      throw new Error(`unexpected path ${path}`);
+    });
+
+    await act(async () => {
+      await result.current.logout();
+    });
+
+    expect(setAccessToken).toHaveBeenLastCalledWith(null);
+  });
+});

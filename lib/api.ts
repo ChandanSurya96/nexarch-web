@@ -44,14 +44,30 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * Reads flask-jwt-extended's non-httpOnly CSRF cookie (ADR-031) — the
+ * double-submit value the backend checks against the X-CSRF-TOKEN header
+ * for any cookie-sourced token. In practice that's only POST /auth/refresh
+ * (access tokens travel via the Authorization header, never a cookie —
+ * ADR-017), but attaching it on every request here is simpler than
+ * special-casing one endpoint, and harmless where it's not checked.
+ */
+function getCsrfToken(): string | null {
+  if (typeof document === "undefined") return null; // SSR — no cookies to read
+  const match = document.cookie.match(/(?:^|; )csrf_refresh_token=([^;]*)/);
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
   const url = `${API_BASE}${path}`;
+  const csrfToken = getCsrfToken();
   const resp = await fetch(url, {
     credentials: "include", // send httpOnly cookies (refresh token)
     ...options,
     headers: {
       "Content-Type": "application/json",
       ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+      ...(csrfToken ? { "X-CSRF-TOKEN": csrfToken } : {}),
       ...options.headers,
     },
   });
