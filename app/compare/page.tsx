@@ -5,7 +5,10 @@ import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 
 import { PortfolioComparisonView } from "@/components/comparison/PortfolioComparisonView";
+import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { PageContainer, PageHeader } from "@/components/ui/Layout";
+import { ProfileSkeleton } from "@/components/ui/Skeleton";
 import { usePortfolioComparison } from "@/lib/hooks/usePortfolioComparison";
 
 function CompareContent() {
@@ -20,22 +23,30 @@ function CompareContent() {
     return (
       <EmptyState
         title="Pick two portfolios to compare"
-        description="Visit a portfolio you'd like to compare and use its Compare link, or browse investors to find one."
+        description="Open a portfolio you'd like to compare and use its Compare link, or browse investors to find one."
         action={
-          <Link href="/discover" className="text-sm text-accent hover:text-accent-hover">
-            Go to Discover
+          <Link href="/discover">
+            <Button variant="secondary">Browse investors</Button>
           </Link>
         }
       />
     );
   }
 
-  if (isLoading) {
-    return <p className="text-sm text-text-secondary">Loading…</p>;
-  }
+  if (isLoading) return <ProfileSkeleton />;
 
   if (error || !comparison) {
-    return <p className="text-sm text-negative">This comparison isn&apos;t available.</p>;
+    return (
+      <EmptyState
+        title="This comparison isn't available"
+        description="One of these portfolios may be private, or the link may be wrong."
+        action={
+          <Link href="/discover">
+            <Button variant="secondary">Browse investors</Button>
+          </Link>
+        }
+      />
+    );
   }
 
   return <PortfolioComparisonView comparison={comparison} />;
@@ -43,22 +54,22 @@ function CompareContent() {
 
 /**
  * Milestone 6 — link-only entry (ADR-027): every real entry point (an
- * investor's card, a portfolio's detail page) already has both portfolio
- * ids at hand, so this page doesn't build its own picker. Direct navigation
- * without both ids just shows a guided empty state.
+ * investor's card, a portfolio's detail page) already has both portfolio ids
+ * at hand, so this page doesn't build its own picker. Direct navigation
+ * without both ids shows a guided empty state.
  */
 export default function ComparePage() {
   return (
-    <main className="mx-auto max-w-4xl px-4 py-10">
-      <h1 className="text-xl font-semibold text-text-primary">Compare Portfolios</h1>
-      <p className="mt-1 text-sm text-text-secondary">
-        Objective, side-by-side portfolio health — not a ranking of who&apos;s &quot;better.&quot;
-      </p>
-      <div className="mt-6">
-        <Suspense fallback={<p className="text-sm text-text-secondary">Loading…</p>}>
+    <PageContainer width="default">
+      <PageHeader
+        title="Compare portfolios"
+        description="Side-by-side portfolio health. This is a comparison, not a ranking — neither side is presented as the better one."
+      />
+      <div className="mt-10">
+        <Suspense fallback={<ProfileSkeleton />}>
           <CompareContent />
         </Suspense>
       </div>
-    </main>
+    </PageContainer>
   );
 }

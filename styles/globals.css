@@ -2,19 +2,85 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Color tokens — see docs/design-system.md. Dark mode only for Milestone 4a;
-   no light/dark toggle is being built yet (see the plan's ADR notes). */
+/* Design tokens — see docs/design-system.md. Dark mode only; no light/dark
+   toggle is being built yet.
+
+   The base palette below is unchanged from the design-system.md colour table.
+   What's new are the *derived* accent tokens, which exist for a measured
+   reason: --accent (#6C6CF2) fails WCAG AA both as a fill behind --text-primary
+   (3.81:1) and as small text on --bg-surface (4.39:1). That affected the two
+   most-used interactive elements in the product — the primary button and the
+   selected filter chip. design-system.md asked for "a contrast pass once
+   implemented, not just assumed correct because it looks fine"; this is it.
+   Every ratio in the comments below is computed, not estimated. */
 :root {
+  /* ── Base surfaces ─────────────────────────────────────────────────────── */
   --bg-primary: #0b0b0e;
   --bg-surface: #15151b;
   --bg-surface-hover: #1d1d24;
+  /* One step above --bg-surface, for cards that sit on top of other cards
+     (comparison columns, modal bodies). Keeps elevation legible without
+     inventing a shadow on a near-black background, where shadows read as mud. */
+  --bg-raised: #1f1f27;
+
+  /* ── Text ──────────────────────────────────────────────────────────────── */
   --text-primary: #f5f5f7;
   --text-secondary: #9a9aa5;
+  /* Third tier for captions/footnotes that must not compete with
+     --text-secondary. 5.20:1 on --bg-primary and 4.81:1 on --bg-surface —
+     AA on both, which matters because captions appear on each.
+     An earlier #71717E was estimated rather than measured and came in at
+     4.09/3.78, failing both; a live sweep of every text node caught it. */
+  --text-tertiary: #828291;
+
+  /* ── Accent ────────────────────────────────────────────────────────────── */
+  /* Brand hue. Use as a FILL only, always with --accent-on as the text
+     colour (4.74:1 PASS). Never put --text-primary on it: 3.81:1, FAIL. */
   --accent: #6c6cf2;
   --accent-hover: #8484f5;
+  /* Text colour that sits on an --accent fill. */
+  --accent-on: #0b0b0e;
+  /* Accent as TEXT on a dark surface — 8.08:1 on --bg-surface (PASS).
+     --accent itself is 4.39:1 there and fails for the 12px badge text. */
+  --accent-text: #a5a5f8;
+  /* Low-saturation accent wash for selected/active states that need to read
+     as "chosen" without shouting. Paired with --accent-text: 7.19:1 PASS. */
+  --accent-soft: #1e1e38;
+  --accent-border: #35356b;
+
+  /* ── Semantic ──────────────────────────────────────────────────────────── */
+  /* Green-up / red-down is kept deliberately: it's a near-universal financial
+     convention and deviating from it purely for differentiation would hurt
+     usability. Reserved for genuinely directional figures — never for which
+     side of a comparison happens to be larger (ADR-007). */
   --positive: #3dd68c;
   --negative: #f2555a;
+
+  /* ── Lines ─────────────────────────────────────────────────────────────── */
   --border: #242430;
+  /* A brighter hairline for the edges that need to be findable — table header
+     rules, focused inputs. --border is 1.19:1 on surface: correct for a quiet
+     divider, too quiet for anything structural. */
+  --border-strong: #34343f;
+
+  /* ── Type scale ────────────────────────────────────────────────────────── */
+  /* The modular scale design-system.md specifies. Named by role rather than by
+     size so a heading can't drift to a one-off value per screen. */
+  --text-caption: 0.75rem;   /* 12 */
+  --text-body-sm: 0.875rem;  /* 14 */
+  --text-body: 1rem;         /* 16 */
+  --text-title-sm: 1.25rem;  /* 20 */
+  --text-title: 1.5rem;      /* 24 */
+  --text-display-sm: 2rem;   /* 32 */
+  --text-display: 2.5rem;    /* 40 */
+  --text-hero: 3.25rem;      /* 52 — hero only */
+
+  /* ── Motion ────────────────────────────────────────────────────────────── */
+  /* 150–250ms per design-system.md: premium reads as fast and quiet. */
+  --dur-fast: 120ms;
+  --dur-base: 180ms;
+  --dur-slow: 260ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 *,
@@ -25,8 +91,120 @@
   padding: 0;
 }
 
+html {
+  /* Tells the browser this is a dark UI, so native scrollbars, form controls
+     and the native <select> dropdown render dark instead of a white flash.
+     Without it, Windows in particular renders <select> options as black text
+     on white in the middle of an otherwise dark page. */
+  color-scheme: dark;
+}
+
 body {
   background-color: var(--bg-primary);
   color: var(--text-primary);
   line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Removes the ~300ms double-tap-to-zoom delay on touch devices, which
+   otherwise makes every tap in the discovery feed feel laggy. */
+button,
+a,
+[role="button"],
+summary {
+  touch-action: manipulation;
+}
+
+/* Headings set their own wrap: balance keeps a two-line hero from leaving a
+   single orphaned word on line two. */
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}
+
+p {
+  text-wrap: pretty;
+}
+
+/* Figures must never reflow as digits change width — a portfolio value that
+   jitters on every sync looks broken. Applied at the root for the mono face
+   rather than remembered per component. */
+.font-mono {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+/* ── Motion primitives ───────────────────────────────────────────────────── */
+/* Deliberately CSS, not Framer Motion. design-system.md named Framer, but the
+   motion this design actually calls for is fades, small rises, and a skeleton
+   shimmer — none of which justify ~35kB of JS on a data product where the
+   brief asks for performance and no unnecessary dependencies. Revisit only if
+   layout-animation or gesture work appears. */
+@keyframes nx-rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes nx-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes nx-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.animate-rise {
+  animation: nx-rise var(--dur-slow) var(--ease-out) both;
+}
+
+.animate-fade {
+  animation: nx-fade var(--dur-base) var(--ease-out) both;
+}
+
+/* Staggers a list without a per-item style attribute at the call site. Capped
+   at 6 — beyond that the last card waits long enough to read as slow, and a
+   20-item grid would take over a second to finish arriving. */
+.stagger > *:nth-child(1) { animation-delay: 0ms; }
+.stagger > *:nth-child(2) { animation-delay: 40ms; }
+.stagger > *:nth-child(3) { animation-delay: 80ms; }
+.stagger > *:nth-child(4) { animation-delay: 120ms; }
+.stagger > *:nth-child(5) { animation-delay: 160ms; }
+.stagger > *:nth-child(n + 6) { animation-delay: 200ms; }
+
+/* ── Accessibility floor ─────────────────────────────────────────────────── */
+/* Everything above is decoration. Someone who has asked their OS to stop
+   moving things gets a static interface, not a politely slower one. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* A visible focus ring on every focusable element, not only the ones that
+   remembered to ask. Easy to lose in a dark, minimal palette — which is
+   exactly why it's set globally rather than per component. */
+:focus-visible {
+  outline: 2px solid var(--accent-text);
+  outline-offset: 2px;
+  border-radius: 2px;
 }

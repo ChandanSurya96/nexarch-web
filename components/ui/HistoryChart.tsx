@@ -1,5 +1,7 @@
 "use client";
 
+import { formatCurrencyWhole } from "@/lib/format";
+
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 import { PortfolioHistoryEntry } from "@/lib/types/history";
@@ -9,14 +11,14 @@ interface HistoryChartProps {
 }
 
 function formatValue(value: number): string {
-  return `₹${value.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
+  return formatCurrencyWhole(value);
 }
 
 /** Portfolio value over time (Milestone 5) — same accessible-table pattern as AllocationChart. */
 export function HistoryChart({ entries }: HistoryChartProps) {
   const data = entries
-    .filter((entry): entry is PortfolioHistoryEntry & { totalValue: number } =>
-      entry.totalValue !== null
+    .filter(
+      (entry): entry is PortfolioHistoryEntry & { totalValue: number } => entry.totalValue !== null,
     )
     .map((entry) => ({ date: entry.snapshotDate, value: entry.totalValue }));
 
@@ -37,7 +39,13 @@ export function HistoryChart({ entries }: HistoryChartProps) {
             <Tooltip
               formatter={(value) => (typeof value === "number" ? formatValue(value) : value)}
             />
-            <Line type="monotone" dataKey="value" stroke="var(--accent)" strokeWidth={2} dot={false} />
+            <Line
+              type="monotone"
+              dataKey="value"
+              stroke="var(--accent)"
+              strokeWidth={2}
+              dot={false}
+            />
           </LineChart>
         </ResponsiveContainer>
       </div>

@@ -1,9 +1,13 @@
 "use client";
 
+import Link from "next/link";
+
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
-import { Card } from "@/components/ui/Card";
+import { AuthLayout } from "@/components/ui/AuthLayout";
+import { Button } from "@/components/ui/Button";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { ApiError, apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { PENDING_BROKER_NAME_KEY } from "@/lib/hooks/useInitBrokerConnection";
@@ -51,35 +55,53 @@ export default function BrokerCallbackPage() {
       try {
         await apiFetch("/broker-connections/callback", {
           method: "POST",
-          body: JSON.stringify({ broker_name: brokerName, auth_code: code, state }),
+          body: JSON.stringify({
+            broker_name: brokerName,
+            auth_code: code,
+            state,
+          }),
         });
         router.replace("/profile");
       } catch (err) {
         setStatus("error");
         setError(
-          err instanceof ApiError ? err.message : "Something went wrong connecting your broker."
+          err instanceof ApiError ? err.message : "Something went wrong connecting your broker.",
         );
       }
     })();
   }, [isLoading, user, router]);
 
   return (
-    <main className="flex min-h-screen items-center justify-center px-4">
-      <Card className="w-full max-w-sm text-center">
-        {status === "processing" ? (
-          <p className="text-sm text-text-secondary">Connecting your broker…</p>
-        ) : (
-          <>
-            <p className="text-sm text-negative">{error}</p>
-            <a
-              href="/profile"
-              className="mt-4 inline-block text-sm text-accent hover:text-accent-hover"
-            >
-              Back to profile
-            </a>
-          </>
-        )}
-      </Card>
-    </main>
+    <AuthLayout
+      title={status === "processing" ? "Connecting your broker" : "Couldn't connect your broker"}
+      description={
+        status === "processing"
+          ? "Finishing the handshake with your broker. This takes a few seconds."
+          : undefined
+      }
+    >
+      {status === "processing" ? (
+        <div className="flex flex-col gap-3" role="status" aria-live="polite">
+          {/* A skeleton rather than a spinner: this step ends by revealing a
+              profile, so showing the shape of what's coming is more useful
+              than an abstract indicator. */}
+          <Skeleton className="h-4 w-3/4" />
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-1/2" />
+          <span className="sr-only">Connecting your broker…</span>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-5">
+          <p role="alert" className="text-body-sm leading-relaxed text-negative">
+            {error}
+          </p>
+          <Link href="/profile">
+            <Button variant="secondary" size="lg" className="w-full">
+              Back to your profile
+            </Button>
+          </Link>
+        </div>
+      )}
+    </AuthLayout>
   );
 }

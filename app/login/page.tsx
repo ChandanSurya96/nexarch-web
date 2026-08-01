@@ -4,8 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 
+import { AuthLayout, Field, inputClassName } from "@/components/ui/AuthLayout";
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
 import { ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth/AuthProvider";
 
@@ -25,59 +25,69 @@ export default function LoginPage() {
       await login(email, password);
       router.push("/");
     } catch (err) {
-      setError(
-        err instanceof ApiError ? err.message : "Something went wrong. Please try again."
-      );
+      setError(err instanceof ApiError ? err.message : "Something went wrong. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center px-4">
-      <Card className="w-full max-w-sm">
-        <h1 className="mb-6 text-lg font-semibold text-text-primary">Log in</h1>
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <div>
-            <label htmlFor="email" className="mb-1 block text-sm text-text-secondary">
-              Email
-            </label>
-            <input
-              id="email"
-              type="email"
-              autoComplete="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-md border border-border bg-bg-primary px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent"
-            />
-          </div>
-          <div>
-            <label htmlFor="password" className="mb-1 block text-sm text-text-secondary">
-              Password
-            </label>
-            <input
-              id="password"
-              type="password"
-              autoComplete="current-password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-md border border-border bg-bg-primary px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent"
-            />
-          </div>
-          {error && <p className="text-sm text-negative">{error}</p>}
-          <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? "Logging in…" : "Log in"}
-          </Button>
-        </form>
-        <p className="mt-4 text-sm text-text-secondary">
+    <AuthLayout
+      title="Log in"
+      description="Continue to your portfolio."
+      footer={
+        <>
           Don&apos;t have an account?{" "}
-          <Link href="/register" className="text-accent hover:text-accent-hover">
-            Register
+          <Link href="/register" className="font-medium text-accent-text hover:underline">
+            Create one
           </Link>
-        </p>
-      </Card>
-    </main>
+        </>
+      }
+    >
+      <form onSubmit={handleSubmit} className="flex flex-col gap-5" noValidate>
+        <Field label="Email" htmlFor="email">
+          <input
+            id="email"
+            name="email"
+            type="email"
+            inputMode="email"
+            autoComplete="email"
+            // Email addresses aren't prose; a red squiggle under one is noise.
+            spellCheck={false}
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className={inputClassName}
+          />
+        </Field>
+
+        <Field label="Password" htmlFor="password">
+          <input
+            id="password"
+            name="password"
+            type="password"
+            autoComplete="current-password"
+            required
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className={inputClassName}
+          />
+        </Field>
+
+        {error && (
+          // aria-live so the failure is announced when it appears — a
+          // screen-reader user submitting a form otherwise gets silence.
+          <p role="alert" aria-live="polite" className="text-body-sm text-negative">
+            {error}
+          </p>
+        )}
+
+        {/* Stays enabled until the request actually starts, so a slow first
+            keystroke can't leave the form un-submittable. */}
+        <Button type="submit" size="lg" disabled={isSubmitting}>
+          {isSubmitting ? "Logging in…" : "Log in"}
+        </Button>
+      </form>
+    </AuthLayout>
   );
 }

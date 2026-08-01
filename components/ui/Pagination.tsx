@@ -15,7 +15,7 @@ export function Pagination({ page, totalPages, onPageChange }: PaginationProps) 
       <Button variant="secondary" onClick={() => onPageChange(page - 1)} disabled={page <= 1}>
         Previous
       </Button>
-      <span className="text-sm tabular-nums text-text-secondary">
+      <span className="font-mono text-caption text-text-secondary">
         Page {page} of {totalPages}
       </span>
       <Button

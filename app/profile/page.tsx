@@ -4,10 +4,13 @@ import { useState } from "react";
 
 import { PortfolioProfileView } from "@/components/portfolio/PortfolioProfileView";
 import { RequireAuth } from "@/components/RequireAuth";
+import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { PageContainer, PageSection } from "@/components/ui/Layout";
 import { Modal } from "@/components/ui/Modal";
+import { ProfileSkeleton } from "@/components/ui/Skeleton";
+import { InfoList, InfoRow, Surface } from "@/components/ui/Surface";
 import { useBrokerConnections } from "@/lib/hooks/useBrokerConnections";
 import { useDisconnectBroker } from "@/lib/hooks/useDisconnectBroker";
 import { useInitBrokerConnection } from "@/lib/hooks/useInitBrokerConnection";
@@ -18,7 +21,13 @@ import { useUpdateVisibility } from "@/lib/hooks/useUpdateVisibility";
 
 const UPSTOX = "upstox";
 
-function ConnectedProfile({ portfolioId, connectionId }: { portfolioId: string; connectionId: string | null }) {
+function ConnectedProfile({
+  portfolioId,
+  connectionId,
+}: {
+  portfolioId: string;
+  connectionId: string | null;
+}) {
   const { data: profile, isLoading, error } = usePortfolioProfile(portfolioId);
   const disconnectBroker = useDisconnectBroker();
   const syncNow = useSyncNow();
@@ -26,36 +35,86 @@ function ConnectedProfile({ portfolioId, connectionId }: { portfolioId: string; 
   const [disconnectOpen, setDisconnectOpen] = useState(false);
   const [visibilityOpen, setVisibilityOpen] = useState(false);
 
-  if (isLoading) return <p className="text-sm text-text-secondary">Loading your holdings…</p>;
+  if (isLoading) return <ProfileSkeleton />;
   if (error || !profile) {
-    return <p className="text-sm text-negative">Couldn&apos;t load your profile.</p>;
+    return (
+      <EmptyState
+        title="Couldn't load your portfolio"
+        description="The request didn't complete. Refresh the page to try again."
+      />
+    );
   }
 
   const isPublic = profile.portfolio.isPublic;
 
   return (
     <>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <Button
-            variant="secondary"
-            onClick={() => connectionId && syncNow.mutate(connectionId)}
-            disabled={syncNow.isPending || !connectionId}
-          >
-            {syncNow.isPending ? "Syncing…" : "Sync now"}
-          </Button>
-          {connectionId && (
-            <Button variant="ghost" onClick={() => setDisconnectOpen(true)}>
-              Disconnect broker
-            </Button>
-          )}
-        </div>
-        <Button variant="secondary" onClick={() => setVisibilityOpen(true)}>
-          {isPublic ? "Make private" : "Make public"}
-        </Button>
-      </div>
-
+      {/* The portfolio itself leads. Owner controls used to sit in a button bar
+          above the identity, which put account plumbing ahead of the thing the
+          page is actually about. */}
       <PortfolioProfileView profile={profile} isOwner />
+
+      {/* Broker & privacy — last, and deliberately quiet. These are settings,
+          not content: rendered as labelled rows on a recessive surface rather
+          than as a row of prominent buttons competing with the data above. */}
+      <PageSection title="Broker & privacy">
+        <Surface tone="quiet" padding="none">
+          <InfoList className="px-5">
+            <InfoRow
+              label="Broker connection"
+              hint={
+                connectionId
+                  ? "Holdings refresh automatically once a day."
+                  : "Reconnect to resume automatic daily refreshes."
+              }
+              value={
+                <div className="flex items-center gap-2">
+                  <Badge variant={connectionId ? "verified" : "public"}>
+                    {connectionId ? "Connected" : "Not connected"}
+                  </Badge>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => connectionId && syncNow.mutate(connectionId)}
+                    disabled={syncNow.isPending || !connectionId}
+                  >
+                    {syncNow.isPending ? "Syncing…" : "Sync now"}
+                  </Button>
+                </div>
+              }
+            />
+
+            <InfoRow
+              label="Profile visibility"
+              hint={
+                isPublic
+                  ? "Anyone browsing Nexarch can see your holdings."
+                  : "Only you can see your holdings."
+              }
+              value={
+                <div className="flex items-center gap-2">
+                  <Badge variant="tag">{isPublic ? "Public" : "Private"}</Badge>
+                  <Button variant="secondary" size="sm" onClick={() => setVisibilityOpen(true)}>
+                    {isPublic ? "Make private" : "Make public"}
+                  </Button>
+                </div>
+              }
+            />
+
+            {connectionId && (
+              <InfoRow
+                label="Disconnect broker"
+                hint="Deletes your stored broker token. Synced holdings stay visible."
+                value={
+                  <Button variant="ghost" size="sm" onClick={() => setDisconnectOpen(true)}>
+                    Disconnect
+                  </Button>
+                }
+              />
+            )}
+          </InfoList>
+        </Surface>
+      </PageSection>
 
       <Modal
         open={disconnectOpen}
@@ -92,17 +151,19 @@ function ConnectedProfile({ portfolioId, connectionId }: { portfolioId: string; 
 }
 
 function ProfileContent() {
-  const { data: myPortfolio, isLoading: portfolioLoading, pollExhausted } = useMyPortfolio({
-    pollWhilePending: true,
-  });
+  const {
+    data: myPortfolio,
+    isLoading: portfolioLoading,
+    pollExhausted,
+  } = useMyPortfolio({ pollWhilePending: true });
   const { data: connections, isLoading: connectionsLoading } = useBrokerConnections();
   const initBroker = useInitBrokerConnection();
 
   if (portfolioLoading || connectionsLoading) {
     return (
-      <div className="mx-auto max-w-3xl px-4 py-10">
-        <p className="text-sm text-text-secondary">Loading your profile…</p>
-      </div>
+      <PageContainer width="default">
+        <ProfileSkeleton />
+      </PageContainer>
     );
   }
 
@@ -112,66 +173,68 @@ function ProfileContent() {
   if (!myPortfolio) {
     if (connection?.status === "expired") {
       return (
-        <div className="mx-auto max-w-3xl px-4 py-10">
+        <PageContainer width="default">
           <EmptyState
             title="Your broker connection needs to be reconnected"
-            description="Your last sync didn't complete because the connection expired."
+            description="Your last sync didn't complete because the connection expired. Reconnecting restores automatic daily refreshes."
             action={
               <Button onClick={() => initBroker.mutate(UPSTOX)} disabled={initBroker.isPending}>
                 {initBroker.isPending ? "Redirecting…" : "Reconnect"}
               </Button>
             }
           />
-        </div>
+        </PageContainer>
       );
     }
 
     if (connection) {
       return (
-        <div className="mx-auto max-w-3xl px-4 py-10">
+        <PageContainer width="default">
           <EmptyState
             title="Syncing your portfolio…"
             description={
               pollExhausted
-                ? "This is taking longer than expected. Check back shortly."
-                : "Your broker connection is active — this usually takes a few seconds."
+                ? "This is taking longer than expected. Your holdings will appear here once the sync completes — check back shortly."
+                : "Your broker connection is active. The first sync usually takes a few seconds."
             }
           />
-        </div>
+        </PageContainer>
       );
     }
 
     return (
-      <div className="mx-auto max-w-3xl px-4 py-10">
+      <PageContainer width="default">
         <EmptyState
-          title="Connect a broker to get your verified profile"
-          description="Nexarch reads your holdings directly from your broker, read-only. Nothing here executes trades or moves money."
+          title="Connect a broker to build your verified profile"
+          description="Nexarch reads your holdings directly from your broker, read-only. It cannot place trades or move money."
           action={
             <Button onClick={() => initBroker.mutate(UPSTOX)} disabled={initBroker.isPending}>
-              {initBroker.isPending ? "Redirecting…" : "Connect Broker"}
+              {initBroker.isPending ? "Redirecting…" : "Connect broker"}
             </Button>
           }
         />
-      </div>
+      </PageContainer>
     );
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-10">
+    <PageContainer width="default">
       {connection?.status === "expired" && (
-        <Card className="mb-6 flex flex-wrap items-center justify-between gap-3">
-          <p className="text-sm text-text-primary">Your broker connection needs to be reconnected.</p>
-          <Button variant="secondary" onClick={() => initBroker.mutate(UPSTOX)}>
+        <Surface tone="quiet" className="mb-8 flex flex-wrap items-center justify-between gap-3">
+          <p className="text-body-sm text-text-primary">
+            Your broker connection needs to be reconnected.
+          </p>
+          <Button variant="secondary" size="sm" onClick={() => initBroker.mutate(UPSTOX)}>
             Reconnect
           </Button>
-        </Card>
+        </Surface>
       )}
 
       <ConnectedProfile
         portfolioId={myPortfolio.id}
         connectionId={connection && connection.status !== "expired" ? connection.id : null}
       />
-    </div>
+    </PageContainer>
   );
 }
 

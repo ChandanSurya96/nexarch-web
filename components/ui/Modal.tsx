@@ -48,12 +48,15 @@ export function Modal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="modal-title"
-        className="w-full max-w-sm rounded-lg border border-border bg-bg-surface p-6"
+        className="w-full max-w-sm rounded-xl border border-border-strong bg-bg-raised p-6"
       >
-        <h2 id="modal-title" className="text-base font-semibold text-text-primary">
+        <h2
+          id="modal-title"
+          className="text-title-sm font-semibold tracking-tight text-text-primary"
+        >
           {title}
         </h2>
-        <div className="mt-2 text-sm text-text-secondary">{children}</div>
+        <div className="mt-3 text-body-sm leading-relaxed text-text-secondary">{children}</div>
         <div className="mt-6 flex justify-end gap-3">
           <Button variant="ghost" onClick={onClose}>
             Cancel

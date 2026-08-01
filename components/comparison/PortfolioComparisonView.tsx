@@ -1,29 +1,18 @@
 "use client";
 
+import { ComparisonStatRow } from "@/components/comparison/ComparisonStatRow";
 import { AllocationChart } from "@/components/ui/AllocationChart";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Badge";
-import { ComparisonStatRow } from "@/components/comparison/ComparisonStatRow";
+import { PageSection } from "@/components/ui/Layout";
+import { PortfolioIdentityStrip } from "@/components/ui/PortfolioIdentityStrip";
+import { Surface } from "@/components/ui/Surface";
+import { formatCount, formatCurrency, formatDays, formatPercent, formatRatio } from "@/lib/format";
 import { PortfolioComparison } from "@/lib/types/comparison";
 
 const VERIFIED_TOOLTIP = "Verified: holdings data came from an authenticated broker connection.";
-const PUBLIC_TOOLTIP = "Public Portfolio: an educational reconstruction from public regulatory disclosures.";
-
-function formatRatio(v: number): string {
-  return v.toFixed(2);
-}
-function formatPercent(v: number): string {
-  return `${(v * 100).toFixed(1)}%`;
-}
-function formatDays(v: number): string {
-  return `${v}d`;
-}
-function formatCount(v: number): string {
-  return String(v);
-}
-function formatCurrency(v: number): string {
-  return `₹${v.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
-}
+const PUBLIC_TOOLTIP =
+  "Public Portfolio: an educational reconstruction from public regulatory disclosures.";
 
 interface PortfolioComparisonViewProps {
   comparison: PortfolioComparison;
@@ -31,102 +20,179 @@ interface PortfolioComparisonViewProps {
 
 /**
  * Shared side-by-side rendering for GET /portfolios/compare — current-state
- * analytics + diff only (Milestone 6). Explicit non-goal: no overlaid
- * HistoryChart trend comparison over time — that's materially bigger than
- * this milestone's "compare two portfolios / diff visualizations" scope.
+ * analytics plus diff only (Milestone 6). Explicit non-goal: no overlaid
+ * history trend, which is materially bigger than this milestone's scope.
+ *
+ * The layout is symmetric on purpose. A comparison where one side is visually
+ * heavier than the other reads as a verdict, and this product doesn't rank
+ * portfolios (ADR-007) — both columns get identical width, type and treatment,
+ * and the delta is the quietest thing on the row.
  */
 export function PortfolioComparisonView({ comparison }: PortfolioComparisonViewProps) {
   const [entryA, entryB] = comparison.portfolios;
   const { health, totalValue, sectorAllocation } = comparison.diff;
+
+  // Both sides must have allocation, or neither strip renders. A strip on one
+  // side only would read as "this portfolio has no sectors" rather than "we
+  // don't have that data", and an asymmetric comparison is a misleading one.
+  const allocations = [entryA, entryB].map((e) => e.analytics.sectorAllocation ?? {});
+  const bothHaveAllocation = allocations.every((a) => Object.keys(a).length > 0);
 
   const notableSectorDiffs = Object.entries(sectorAllocation)
     .filter(([, diff]) => diff.delta !== null && Math.abs(diff.delta) >= 0.01)
     .sort((a, b) => Math.abs(b[1].delta ?? 0) - Math.abs(a[1].delta ?? 0));
 
   return (
-    <div className="flex flex-col gap-8">
-      <div className="grid grid-cols-2 gap-4">
-        {[entryA, entryB].map(({ portfolio }) => {
+    <div>
+      {/* ── Who's being compared ──────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        {[entryA, entryB].map(({ portfolio, analytics }) => {
           const isVerified = portfolio.portfolioType === "verified";
           return (
-            <div key={portfolio.id} className="flex items-center gap-3">
-              <Avatar name={portfolio.displayName} size="lg" />
-              <div className="min-w-0">
-                <p className="truncate font-semibold text-text-primary">{portfolio.displayName}</p>
-                <Badge
-                  variant={isVerified ? "verified" : "public"}
-                  title={isVerified ? VERIFIED_TOOLTIP : PUBLIC_TOOLTIP}
-                >
-                  {isVerified ? "Verified" : "Public Portfolio"}
-                </Badge>
+            <Surface key={portfolio.id} className="animate-rise">
+              <div className="flex items-start gap-3">
+                <Avatar name={portfolio.displayName} />
+                <div className="min-w-0 flex-1">
+                  <h2 className="truncate text-title-sm font-medium tracking-tight text-text-primary">
+                    {portfolio.displayName}
+                  </h2>
+                  <div className="mt-1.5">
+                    <Badge
+                      variant={isVerified ? "verified" : "public"}
+                      title={isVerified ? VERIFIED_TOOLTIP : PUBLIC_TOOLTIP}
+                    >
+                      {isVerified ? "Verified" : "Public Portfolio"}
+                    </Badge>
+                  </div>
+                </div>
               </div>
-            </div>
+
+              {bothHaveAllocation && (
+                <div className="mt-5">
+                  <PortfolioIdentityStrip
+                    allocation={analytics.sectorAllocation}
+                    label={`${portfolio.displayName}'s sector mix`}
+                    variant="medium"
+                  />
+                </div>
+              )}
+            </Surface>
           );
         })}
       </div>
 
-      <section>
-        <h2 className="mb-3 text-sm font-semibold text-text-secondary">Portfolio Health</h2>
-        <div className="overflow-x-auto">
-          <table className="w-full">
+      {/* ── Metrics ───────────────────────────────────────────────────────── */}
+      <PageSection title="Health & value" titleAside="Differences are shown without judgment">
+        <div className="overflow-x-auto rounded-xl border border-border">
+          {/* table-fixed is load-bearing, not cosmetic: with the default
+              `auto` layout the browser sizes columns by content, so the
+              portfolio with the longer display name gets a wider column
+              (measured 154px vs 147px) and the comparison stops being
+              symmetric. Fixed layout makes the declared widths authoritative,
+              so neither side can look like the one the other is measured
+              against. */}
+          <table className="w-full min-w-[36rem] table-fixed">
+            <caption className="sr-only">
+              Portfolio health and value compared between {entryA.portfolio.displayName} and{" "}
+              {entryB.portfolio.displayName}
+            </caption>
             <thead>
-              <tr className="border-b border-border">
-                <th scope="col" className="py-2 pr-4 text-left text-xs font-medium uppercase tracking-wide text-text-secondary">
+              <tr className="border-b border-border-strong bg-bg-surface">
+                <th
+                  scope="col"
+                  className="px-4 py-3 pl-5 text-left font-mono text-caption font-medium uppercase tracking-[0.08em] text-text-tertiary"
+                >
                   Metric
                 </th>
-                <th scope="col" className="py-2 px-4 text-right text-xs font-medium uppercase tracking-wide text-text-secondary">
-                  {entryA.portfolio.displayName}
+                {/* Both portfolio columns share one width so neither reads as
+                    the reference the other is measured against. */}
+                <th
+                  scope="col"
+                  className="w-[22%] px-4 py-3 text-right font-mono text-caption font-medium uppercase tracking-[0.08em] text-text-secondary"
+                >
+                  <span className="block truncate">{entryA.portfolio.displayName}</span>
                 </th>
-                <th scope="col" className="py-2 px-4 text-right text-xs font-medium uppercase tracking-wide text-text-secondary">
-                  {entryB.portfolio.displayName}
+                <th
+                  scope="col"
+                  className="w-[22%] px-4 py-3 text-right font-mono text-caption font-medium uppercase tracking-[0.08em] text-text-secondary"
+                >
+                  <span className="block truncate">{entryB.portfolio.displayName}</span>
                 </th>
-                <th scope="col" className="py-2 pl-4 text-right text-xs font-medium uppercase tracking-wide text-text-secondary">
+                <th
+                  scope="col"
+                  className="w-[18%] px-4 py-3 pr-5 text-right font-mono text-caption font-medium uppercase tracking-[0.08em] text-text-tertiary"
+                >
                   Difference
                 </th>
               </tr>
             </thead>
-            <tbody>
-              <ComparisonStatRow label="Total Value" diff={totalValue} format={formatCurrency} />
+            <tbody className="px-5">
+              <ComparisonStatRow label="Total value" diff={totalValue} format={formatCurrency} />
               <ComparisonStatRow
                 label="Diversification"
+                hint="0 = concentrated, 1 = evenly diversified"
                 diff={health.diversificationScore}
                 format={formatRatio}
               />
               <ComparisonStatRow
-                label="Concentration (HHI)"
+                label="Concentration"
+                hint="Herfindahl-Hirschman sector index"
                 diff={health.sectorConcentrationHhi}
                 format={formatRatio}
               />
-              <ComparisonStatRow label="Portfolio Age" diff={health.portfolioAgeDays} format={formatDays} />
+              <ComparisonStatRow
+                label="Portfolio age"
+                diff={health.portfolioAgeDays}
+                format={formatDays}
+              />
               <ComparisonStatRow label="Holdings" diff={health.holdingCount} format={formatCount} />
-              <ComparisonStatRow label="Volatility" diff={health.volatility} format={formatPercent} />
+              <ComparisonStatRow
+                label="Volatility"
+                hint="Annualised, trailing year"
+                diff={health.volatility}
+                format={formatPercent}
+              />
             </tbody>
           </table>
         </div>
-      </section>
+      </PageSection>
 
-      <section>
-        <h2 className="mb-3 text-sm font-semibold text-text-secondary">Sector Allocation</h2>
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-          <AllocationChart
-            title={`${entryA.portfolio.displayName}'s sector allocation`}
-            allocation={entryA.analytics.sectorAllocation}
-          />
-          <AllocationChart
-            title={`${entryB.portfolio.displayName}'s sector allocation`}
-            allocation={entryB.analytics.sectorAllocation}
-          />
-        </div>
-        {notableSectorDiffs.length > 0 && (
-          <ul className="mt-4 flex flex-col gap-1.5 text-sm text-text-secondary">
-            {notableSectorDiffs.map(([sector, diff]) => (
-              <li key={sector}>
-                {sector}: {((diff.a ?? 0) * 100).toFixed(0)}% vs {((diff.b ?? 0) * 100).toFixed(0)}%
-              </li>
+      {/* ── Allocation ────────────────────────────────────────────────────── */}
+      {bothHaveAllocation && (
+        <PageSection title="Sector allocation">
+          <div className="grid grid-cols-1 gap-8 sm:grid-cols-2">
+            {[entryA, entryB].map(({ portfolio, analytics }) => (
+              <div key={portfolio.id}>
+                <h3 className="mb-4 truncate text-body-sm font-medium text-text-secondary">
+                  {portfolio.displayName}
+                </h3>
+                <AllocationChart
+                  title={`${portfolio.displayName}'s sector allocation`}
+                  allocation={analytics.sectorAllocation}
+                />
+              </div>
             ))}
-          </ul>
-        )}
-      </section>
+          </div>
+
+          {notableSectorDiffs.length > 0 && (
+            <div className="mt-8 border-t border-border pt-6">
+              <h3 className="text-body-sm font-medium text-text-primary">Where they differ most</h3>
+              <dl className="mt-4 divide-y divide-border">
+                {notableSectorDiffs.map(([sector, diff]) => (
+                  <div key={sector} className="flex items-baseline justify-between gap-6 py-2.5">
+                    <dt className="min-w-0 truncate text-body-sm text-text-secondary">{sector}</dt>
+                    <dd className="shrink-0 font-mono text-body-sm text-text-primary">
+                      {formatPercent(diff.a ?? 0)}
+                      <span className="mx-2 text-text-tertiary">vs</span>
+                      {formatPercent(diff.b ?? 0)}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+          )}
+        </PageSection>
+      )}
     </div>
   );
 }

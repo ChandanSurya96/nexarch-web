@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { ReactNode, useEffect } from "react";
 
+import { PageContainer } from "@/components/ui/Layout";
+import { ProfileSkeleton } from "@/components/ui/Skeleton";
 import { useAuth } from "@/lib/auth/AuthProvider";
 
 /**
@@ -21,10 +23,17 @@ export function RequireAuth({ children }: { children: ReactNode }) {
   }, [isLoading, user, router]);
 
   if (isLoading || !user) {
+    // Renders <main id="main"> rather than a bare div: this branch is what the
+    // server sends for every guarded route, so without it the global skip link
+    // in app/layout.tsx points at an element that doesn't exist yet and the
+    // page ships with no main landmark at all.
     return (
-      <div className="flex min-h-[50vh] items-center justify-center">
-        <p className="text-sm text-text-secondary">Loading…</p>
-      </div>
+      <PageContainer width="default">
+        <ProfileSkeleton />
+        <span className="sr-only" role="status">
+          Checking your session…
+        </span>
+      </PageContainer>
     );
   }
 

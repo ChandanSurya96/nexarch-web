@@ -18,7 +18,7 @@ export function AllocationChart({ title, allocation }: AllocationChartProps) {
   const entries = Object.entries(allocation).sort((a, b) => b[1] - a[1]);
 
   if (entries.length === 0) {
-    return <p className="text-sm text-text-secondary">Not enough data yet.</p>;
+    return <p className="text-body-sm text-text-secondary">Not enough data yet.</p>;
   }
 
   const data = entries.map(([sector, weight]) => ({ sector, weight }));
@@ -41,7 +41,9 @@ export function AllocationChart({ title, allocation }: AllocationChartProps) {
               ))}
             </Pie>
             <Tooltip
-              formatter={(value) => (typeof value === "number" ? `${(value * 100).toFixed(1)}%` : value)}
+              formatter={(value) =>
+                typeof value === "number" ? `${(value * 100).toFixed(1)}%` : value
+              }
             />
           </PieChart>
         </ResponsiveContainer>
@@ -67,7 +69,10 @@ export function AllocationChart({ title, allocation }: AllocationChartProps) {
 
       <ul className="mt-3 flex flex-wrap gap-3" aria-hidden="true">
         {data.map((entry, index) => (
-          <li key={entry.sector} className="flex items-center gap-1.5 text-xs text-text-secondary">
+          <li
+            key={entry.sector}
+            className="flex items-center gap-1.5 text-caption text-text-secondary"
+          >
             <span
               className="h-2.5 w-2.5 rounded-full"
               style={{ backgroundColor: colorForSector(entry.sector, index) }}

@@ -2,6 +2,10 @@
 
 import { useMemo, useState } from "react";
 
+import { EmptyState } from "@/components/ui/EmptyState";
+import { formatCurrency, formatQuantity } from "@/lib/format";
+import { colorForSector } from "@/lib/sectorColors";
+
 export interface Holding {
   id: string;
   symbol: string;
@@ -19,17 +23,16 @@ function computeValue(holding: Holding): number | null {
   return Number(holding.quantity) * Number(holding.avgCostPrice);
 }
 
-function formatNumber(n: number): string {
-  return n.toLocaleString("en-IN", { maximumFractionDigits: 2 });
-}
-
 /** Tabular-nums, client-side sortable, sticky header — docs/design-system.md. */
 export function HoldingsTable({ holdings }: { holdings: Holding[] }) {
   const [sortKey, setSortKey] = useState<SortKey>("symbol");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
   const sorted = useMemo(() => {
-    const rows = holdings.map((holding) => ({ holding, value: computeValue(holding) }));
+    const rows = holdings.map((holding) => ({
+      holding,
+      value: computeValue(holding),
+    }));
     const factor = sortDirection === "asc" ? 1 : -1;
     return rows.sort((a, b) => {
       switch (sortKey) {
@@ -54,54 +57,111 @@ export function HoldingsTable({ holdings }: { holdings: Holding[] }) {
     }
   }
 
-  function headerButton(key: SortKey, label: string, align: "left" | "right") {
-    const active = key === sortKey;
+  /**
+   * A sortable column header.
+   *
+   * aria-sort is what makes this usable without sight — previously the only
+   * indication of sort state was an aria-hidden arrow, so a screen-reader user
+   * could activate the control but never learn what it did.
+   */
+  function SortableHeader({
+    columnKey,
+    label,
+    align = "left",
+  }: {
+    columnKey: SortKey;
+    label: string;
+    align?: "left" | "right";
+  }) {
+    const active = columnKey === sortKey;
     return (
-      <button
-        type="button"
-        onClick={() => toggleSort(key)}
-        className={`flex items-center gap-1 text-xs font-medium uppercase tracking-wide ${
-          align === "right" ? "ml-auto" : ""
-        } ${active ? "text-text-primary" : "text-text-secondary"}`}
+      <th
+        scope="col"
+        className={`px-4 py-3 ${align === "right" ? "text-right" : "text-left"}`}
+        aria-sort={active ? (sortDirection === "asc" ? "ascending" : "descending") : "none"}
       >
-        {label}
-        {active && <span aria-hidden="true">{sortDirection === "asc" ? "↑" : "↓"}</span>}
-      </button>
+        <button
+          type="button"
+          onClick={() => toggleSort(columnKey)}
+          className={[
+            "inline-flex items-center gap-1 rounded font-mono text-caption font-medium uppercase tracking-[0.08em]",
+            "transition-colors duration-base ease-out hover:text-text-primary",
+            align === "right" ? "flex-row-reverse" : "",
+            active ? "text-text-primary" : "text-text-tertiary",
+          ].join(" ")}
+        >
+          {label}
+          <span aria-hidden="true" className={active ? "opacity-100" : "opacity-0"}>
+            {sortDirection === "asc" ? "↑" : "↓"}
+          </span>
+        </button>
+      </th>
     );
   }
 
   if (holdings.length === 0) {
-    return <p className="text-sm text-text-secondary">No holdings synced yet.</p>;
+    return (
+      <EmptyState
+        title="No holdings yet"
+        description="Holdings appear here once a broker connection has completed its first sync."
+      />
+    );
   }
 
   return (
-    <div className="max-h-[28rem] overflow-auto rounded-lg border border-border">
-      <table className="w-full text-sm">
-        <thead className="sticky top-0 bg-bg-surface">
-          <tr className="border-b border-border">
-            <th className="px-4 py-3 text-left">{headerButton("symbol", "Symbol", "left")}</th>
-            <th className="px-4 py-3 text-left">{headerButton("sector", "Sector", "left")}</th>
-            <th className="px-4 py-3 text-right">{headerButton("quantity", "Quantity", "right")}</th>
-            <th className="px-4 py-3 text-right">{headerButton("value", "Value", "right")}</th>
+    // overflow-x-auto so the table scrolls inside its own container on mobile
+    // rather than forcing the whole page sideways.
+    <div className="max-h-[28rem] overflow-auto rounded-xl border border-border">
+      <table className="w-full min-w-[34rem] text-body-sm">
+        <caption className="sr-only">
+          Holdings, sortable by symbol, sector, quantity and value
+        </caption>
+        <thead className="sticky top-0 z-10 bg-bg-surface">
+          <tr className="border-b border-border-strong">
+            <SortableHeader columnKey="symbol" label="Symbol" />
+            <SortableHeader columnKey="sector" label="Sector" />
+            <SortableHeader columnKey="quantity" label="Qty" align="right" />
+            <SortableHeader columnKey="value" label="Value" align="right" />
           </tr>
         </thead>
         <tbody>
-          {sorted.map(({ holding, value }) => (
-            <tr key={holding.id} className="border-b border-border last:border-0">
-              <td className="px-4 py-3 font-medium text-text-primary">
+          {sorted.map(({ holding, value }, index) => (
+            <tr
+              key={holding.id}
+              className="border-b border-border transition-colors duration-fast ease-out last:border-0 hover:bg-bg-surface-hover"
+            >
+              <th scope="row" className="px-4 py-3 text-left font-medium text-text-primary">
                 {holding.symbol}
                 {holding.exchange && (
-                  <span className="ml-1.5 text-xs font-normal text-text-secondary">
+                  <span className="ml-1.5 font-mono text-caption font-normal text-text-tertiary">
                     {holding.exchange}
                   </span>
                 )}
+              </th>
+              <td className="px-4 py-3 text-text-secondary">
+                {holding.sector ? (
+                  // The same colour this sector takes in the fingerprint and
+                  // the donut, so the three views reinforce each other rather
+                  // than each teaching a separate legend.
+                  <span className="inline-flex items-center gap-2">
+                    <span
+                      aria-hidden="true"
+                      className="h-2 w-2 shrink-0 rounded-full"
+                      style={{
+                        backgroundColor: colorForSector(holding.sector, index),
+                      }}
+                    />
+                    {holding.sector}
+                  </span>
+                ) : (
+                  "—"
+                )}
               </td>
-              <td className="px-4 py-3 text-text-secondary">{holding.sector ?? "—"}</td>
-              <td className="px-4 py-3 text-right tabular-nums text-text-primary">
-                {formatNumber(Number(holding.quantity))}
+              <td className="px-4 py-3 text-right font-mono text-text-primary">
+                {formatQuantity(Number(holding.quantity))}
               </td>
-              <td className="px-4 py-3 text-right tabular-nums text-text-primary">
-                {value !== null ? `₹${formatNumber(value)}` : "—"}
+              <td className="px-4 py-3 text-right font-mono text-text-primary">
+                {value !== null ? formatCurrency(value) : "—"}
               </td>
             </tr>
           ))}

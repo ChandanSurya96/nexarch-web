@@ -5,8 +5,10 @@ import Link from "next/link";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
+import { Surface } from "@/components/ui/Surface";
+import { Eyebrow, Metric } from "@/components/ui/Metric";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import { formatDate } from "@/lib/format";
 import { useFollow, useUnfollow } from "@/lib/hooks/useFollow";
 import { InvestorCardData } from "@/lib/types/investorCard";
 
@@ -28,7 +30,17 @@ interface InvestorCardProps {
   viewerPortfolioId?: string | null;
 }
 
-/** The shared list-item summary for both the Discovery Feed and the Public Investor Library. */
+/**
+ * The shared list-item summary for both the Discovery Feed and the Public
+ * Investor Library.
+ *
+ * Note on the missing fingerprint: this card would be the highest-value place
+ * for the sector band, since it's what makes a grid scannable by shape. The
+ * discovery list endpoint returns health metrics but not sector_allocation,
+ * and inventing a shape from data we don't have would be worse than omitting
+ * it. Diversification carries the summary instead. See docs/design-system.md
+ * "Remaining UI debt" for the one-field API change that would unlock it.
+ */
 export function InvestorCard({
   investor,
   isFollowing,
@@ -42,69 +54,87 @@ export function InvestorCard({
   if (!investor.portfolioId) return null; // shouldn't happen past seeding — nothing to link to
 
   const isVerified = investor.portfolioType === "verified";
+  const showActions = user && !isOwnPortfolio;
 
   return (
-    <Card className="flex flex-col gap-3">
-      <Link href={`/portfolios/${investor.portfolioId}`} className="flex items-start gap-3">
-        <Avatar name={investor.displayName} />
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="font-medium text-text-primary">{investor.displayName}</span>
-            <Badge
-              variant={isVerified ? "verified" : "public"}
-              title={isVerified ? VERIFIED_TOOLTIP : PUBLIC_TOOLTIP}
-            >
-              {isVerified ? "Verified" : "Public Portfolio"}
-            </Badge>
-          </div>
-          {investor.bio && (
-            <p className="mt-1 line-clamp-2 text-sm text-text-secondary">{investor.bio}</p>
-          )}
-          {investor.strategyTags.length > 0 && (
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {investor.strategyTags.map((tag) => (
-                <Badge key={tag} variant="tag">
-                  {tag}
-                </Badge>
-              ))}
+    <Surface interactive className="animate-rise flex flex-col">
+      {/* The link wraps the summary only, never the action row — a button
+          inside a link is both an accessibility violation and a coin-flip for
+          which one a click actually hits. */}
+      <Link
+        href={`/portfolios/${investor.portfolioId}`}
+        // No outline-none here: removing the ring without a replacement makes
+        // the card unreachable-looking for keyboard users. The global
+        // :focus-visible rule in globals.css supplies the indicator.
+        className="flex flex-1 flex-col rounded-lg"
+      >
+        <div className="flex items-start gap-3">
+          <Avatar name={investor.displayName} />
+          <div className="min-w-0 flex-1">
+            <h3 className="truncate text-body-sm font-medium text-text-primary">
+              {investor.displayName}
+            </h3>
+            <div className="mt-1.5">
+              <Badge
+                variant={isVerified ? "verified" : "public"}
+                title={isVerified ? VERIFIED_TOOLTIP : PUBLIC_TOOLTIP}
+              >
+                {isVerified ? "Verified" : "Public Portfolio"}
+              </Badge>
             </div>
-          )}
-          {investor.diversificationScore !== null && (
-            <p className="mt-2 text-xs text-text-secondary">
-              Diversification: {investor.diversificationScore.toFixed(2)}
-            </p>
-          )}
-          {investor.lastDisclosureUpdate && (
-            <p className="mt-2 text-xs text-text-secondary">
-              Disclosed as of{" "}
-              {new Date(investor.lastDisclosureUpdate).toLocaleDateString("en-IN", {
-                year: "numeric",
-                month: "short",
-                day: "numeric",
-              })}
-            </p>
-          )}
+          </div>
         </div>
+
+        {investor.bio && (
+          <p className="mt-3 line-clamp-2 text-body-sm leading-relaxed text-text-secondary">
+            {investor.bio}
+          </p>
+        )}
+
+        {investor.diversificationScore !== null && (
+          <div className="mt-4">
+            <Eyebrow>Diversification</Eyebrow>
+            <Metric value={investor.diversificationScore.toFixed(2)} size="md" className="mt-1" />
+          </div>
+        )}
+
+        {investor.strategyTags.length > 0 && (
+          <div className="mt-4 flex flex-wrap gap-1.5">
+            {investor.strategyTags.map((tag) => (
+              <Badge key={tag} variant="tag">
+                {tag}
+              </Badge>
+            ))}
+          </div>
+        )}
+
+        {investor.lastDisclosureUpdate && (
+          <p className="mt-4 text-caption text-text-tertiary">
+            Disclosed {formatDate(investor.lastDisclosureUpdate)}
+          </p>
+        )}
       </Link>
-      {user && !isOwnPortfolio && (
-        <div className="flex gap-2">
+
+      {showActions && (
+        <div className="mt-5 flex gap-2 border-t border-border pt-4">
           <Button
             variant={isFollowing ? "secondary" : "primary"}
+            size="sm"
             onClick={() => (isFollowing ? unfollow.mutate() : follow.mutate())}
             disabled={follow.isPending || unfollow.isPending}
           >
-            {isFollowing ? "Unfollow" : "Follow"}
+            {isFollowing ? "Following" : "Follow"}
           </Button>
           {viewerPortfolioId && (
             <Link
               href={`/compare?a=${viewerPortfolioId}&b=${investor.portfolioId}`}
-              className="inline-flex items-center justify-center rounded-md border border-border px-4 py-2 text-sm font-medium text-text-primary hover:bg-bg-surface-hover"
+              className="inline-flex h-8 items-center justify-center rounded-lg border border-border-strong px-3 text-caption font-medium text-text-primary transition-colors duration-base ease-out hover:bg-bg-surface-hover"
             >
-              Compare with mine
+              Compare
             </Link>
           )}
         </div>
       )}
-    </Card>
+    </Surface>
   );
 }
