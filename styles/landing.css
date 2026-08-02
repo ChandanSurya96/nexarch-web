@@ -1,0 +1,103 @@
+/**
+ * Landing-page design tokens — the Figma marketing spec.
+ *
+ * Scoped to `.landing` rather than `:root` on purpose. The Figma file and the
+ * product's own design-system.md disagree on the palette (accent #6C8EFF vs
+ * #6C6CF2), the body face (IBM Plex Sans vs Inter) and every surface value.
+ * Applying these globally would restyle every authenticated screen; scoping
+ * them means the marketing page matches its spec exactly while the product
+ * keeps its own, and the two can be reconciled later in one place.
+ *
+ * Values are the Figma file's verbatim, with one measured exception noted
+ * below. Ratios in the comments are computed, not estimated.
+ */
+
+.landing {
+  /* ── Surfaces ──────────────────────────────────────────────────────────── */
+  --l-bg: #0a0b0e;
+  --l-surface: #0f1115;
+  --l-surface-2: #141720;
+  --l-border: #1c1f28;
+  --l-border-dim: #131519;
+
+  /* ── Text ──────────────────────────────────────────────────────────────── */
+  --l-text: #eceef2; /* 16.94:1 on bg — PASS */
+  --l-text-2: #7c8090; /*  5.01:1 on bg — PASS */
+
+  /*
+   * The one deviation from the Figma file, and it is deliberate.
+   *
+   * The spec's third tier is #3E4250, which measures 1.97:1 on --l-bg and
+   * 1.89:1 on --l-surface — roughly 2.3x below the WCAG AA floor for body
+   * text, and it is used throughout for 10–11px mono labels, dates and
+   * reference ids. That is the *smallest* text on the page carrying the
+   * *worst* contrast, so it fails the accessibility requirement outright.
+   *
+   * #828799 clears AA on every surface tier-three text actually lands on:
+   * --l-bg (5.51:1), --l-surface (5.29:1), --l-surface-2 (5.01:1) and
+   * --l-border (4.60:1, the chip and step-marker fills). An earlier #767C91
+   * was validated against only the first two and measured 4.32:1 on
+   * --l-surface-2 — a live sweep of the rendered page caught it.
+   *
+   * It sits close to --l-text-2, but the design never carried this hierarchy
+   * on colour alone: tier three is always mono, uppercase, 9–11px with
+   * 0.08–0.12em tracking, against tier two's 12–14px sans. The separation
+   * survives on face, size and tracking.
+   */
+  --l-text-3: #828799;
+
+  /* Kept at the Figma value for non-text use only — hairlines, inactive
+     dots, SVG strokes. Never apply to text. */
+  --l-text-3-decorative: #3e4250;
+
+  /* ── Accent ────────────────────────────────────────────────────────────── */
+  --l-accent: #6c8eff; /* 6.51:1 on bg as text — PASS */
+  --l-accent-05: rgba(108, 142, 255, 0.05);
+  --l-accent-10: rgba(108, 142, 255, 0.1);
+  --l-accent-20: rgba(108, 142, 255, 0.2);
+  /* Text colour to place ON an accent fill. --l-text on --l-accent is 2.60:1
+     and fails; the page background against it is 6.51:1 and passes. */
+  --l-accent-on: #0a0b0e;
+
+  background-color: var(--l-bg);
+  color: var(--l-text);
+  font-family: var(--font-plex-sans), system-ui, sans-serif;
+  line-height: 1.6;
+}
+
+/* Tier-three labels and every figure use the mono face with tabular figures,
+   so digits never reflow and column headers align. */
+.landing .font-mono {
+  font-family: var(--font-plex-mono), ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.landing ::selection {
+  background: var(--l-accent-20);
+  color: var(--l-text);
+}
+
+/*
+ * Motion.
+ *
+ * Framer Motion drives entrance and scroll reveals. These keyframes cover the
+ * two ambient loops that would otherwise need a permanently-mounted JS
+ * animation frame — cheaper as CSS, and they stay on the compositor.
+ */
+@keyframes l-pulse-ring {
+  0%,
+  100% {
+    opacity: 0.04;
+  }
+  50% {
+    opacity: 0.09;
+  }
+}
+
+.landing .animate-pulse-ring {
+  animation: l-pulse-ring 4s ease-in-out infinite;
+}
+
+/* The global prefers-reduced-motion rule in globals.css already neutralises
+   CSS animation here. Framer Motion is gated separately via useReducedMotion
+   in components/landing/motion.ts. */

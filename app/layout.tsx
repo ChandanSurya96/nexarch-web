@@ -1,8 +1,9 @@
 import type { Metadata, Viewport } from "next";
-import { IBM_Plex_Mono, Inter } from "next/font/google";
+import { IBM_Plex_Mono, IBM_Plex_Sans, Inter } from "next/font/google";
 
 import "../styles/globals.css";
-import { Nav } from "@/components/Nav";
+import "../styles/landing.css";
+import { SiteNav } from "@/components/SiteNav";
 import { Providers } from "./providers";
 
 const inter = Inter({
@@ -11,9 +12,17 @@ const inter = Inter({
   display: "swap",
 });
 
-// The display face, used only for figures, eyebrow labels and table numerals.
-// Weights are pinned to the three actually used (regular / medium / semibold)
-// so the mono face doesn't cost more than the prose face it accompanies.
+// The landing page's body face (Figma spec). Only the weights the design
+// actually uses, so the marketing page doesn't ship six unused files.
+const plexSans = IBM_Plex_Sans({
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700"],
+  variable: "--font-plex-sans",
+  display: "swap",
+});
+
+// Figures, eyebrow labels and table numerals — used by both the product and
+// the landing page. Weights pinned to the three actually used.
 const plexMono = IBM_Plex_Mono({
   subsets: ["latin"],
   weight: ["400", "500", "600"],
@@ -37,7 +46,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${inter.variable} ${plexMono.variable}`}>
+    <html lang="en" className={`${inter.variable} ${plexSans.variable} ${plexMono.variable}`}>
       <body className="font-sans antialiased">
         <Providers>
           {/* Keyboard and screen-reader users shouldn't have to walk the nav on
@@ -48,7 +57,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           >
             Skip to content
           </a>
-          <Nav />
+          <SiteNav />
           {children}
         </Providers>
       </body>

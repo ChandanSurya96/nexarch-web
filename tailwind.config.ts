@@ -30,9 +30,31 @@ const config: Config = {
         negative: "var(--negative)",
         border: "var(--border)",
         "border-strong": "var(--border-strong)",
+
+        // ── Landing page (Figma marketing spec) ──────────────────────────
+        // Defined on `.landing` in styles/landing.css, not :root, so the
+        // marketing palette can differ from the product's without
+        // restyling any authenticated screen. See that file for the
+        // measured reason --l-text-3 deviates from the Figma value.
+        "l-bg": "var(--l-bg)",
+        "l-surface": "var(--l-surface)",
+        "l-surface-2": "var(--l-surface-2)",
+        "l-border": "var(--l-border)",
+        "l-border-dim": "var(--l-border-dim)",
+        "l-text": "var(--l-text)",
+        "l-text-2": "var(--l-text-2)",
+        "l-text-3": "var(--l-text-3)",
+        "l-text-3-decorative": "var(--l-text-3-decorative)",
+        "l-accent": "var(--l-accent)",
+        "l-accent-on": "var(--l-accent-on)",
+        "l-accent-05": "var(--l-accent-05)",
+        "l-accent-10": "var(--l-accent-10)",
+        "l-accent-20": "var(--l-accent-20)",
       },
       fontFamily: {
         sans: ["var(--font-inter)", "system-ui", "sans-serif"],
+        // The landing page's body face, per the Figma spec.
+        "plex-sans": ["var(--font-plex-sans)", "system-ui", "sans-serif"],
         // Figures, eyebrows and table numerals. In a portfolio-identity
         // product the disclosed numbers are the content, so they carry the
         // typographic personality rather than a decorative headline face.
