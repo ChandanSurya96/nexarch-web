@@ -11,6 +11,7 @@ import { PortfolioIdentityStrip } from "@/components/ui/PortfolioIdentityStrip";
 import { Surface } from "@/components/ui/Surface";
 import { formatCurrency, formatPercent, formatSignedPercent } from "@/lib/format";
 import { usePortfolioHistory } from "@/lib/hooks/usePortfolioHistory";
+import { useStrategyLabels } from "@/lib/strategyLabels";
 import { PortfolioProfile } from "@/lib/types/portfolio";
 
 const VERIFIED_TOOLTIP =
@@ -46,6 +47,21 @@ export function PortfolioProfileView({ profile, isOwner }: PortfolioProfileViewP
     analytics.strategyCategorization.map((c) => [c.slug, c.explanation]),
   );
 
+  // `strategy_tags` are slugs; the display name is a separate field, resolved
+  // in three tiers.
+  //
+  // The categorization payload is preferred because it is already loaded and
+  // is authoritative for *this* portfolio. It is empty for Public Investor
+  // Library portfolios (manually-curated tags, not rule-derived), which is why
+  // the categories endpoint is needed as well: resolving those by reformatting
+  // the slug produced "Small cap specialist" here while /discover rendered the
+  // API's "Small-cap Specialist" for the same tag — one category, two
+  // spellings, which is the exact inconsistency this resolution exists to
+  // remove. humanizeSlug is the last resort and never invents a label.
+  const nameBySlug = new Map(analytics.strategyCategorization.map((c) => [c.slug, c.name]));
+  const categoryLabel = useStrategyLabels();
+  const strategyLabel = (slug: string) => nameBySlug.get(slug) ?? categoryLabel(slug);
+
   const health = analytics.health;
   const hasAllocation = Object.keys(analytics.sectorAllocation).length > 0;
   const hasHistory = !!history && history.length >= 2;
@@ -75,7 +91,7 @@ export function PortfolioProfileView({ profile, isOwner }: PortfolioProfileViewP
               <div className="mt-3 flex flex-wrap gap-1.5">
                 {portfolio.strategyTags.map((tag) => (
                   <Badge key={tag} variant="tag" title={explanationBySlug.get(tag)}>
-                    {tag}
+                    {strategyLabel(tag)}
                   </Badge>
                 ))}
               </div>

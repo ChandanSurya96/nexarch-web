@@ -28,6 +28,19 @@ export function HoldingsTable({ holdings }: { holdings: Holding[] }) {
   const [sortKey, setSortKey] = useState<SortKey>("symbol");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
+  // Public Investor Library holdings are reconstructed from disclosures, which
+  // state quantities but not a cost basis — so `avgCostPrice` is null for every
+  // row and the Value column rendered as an unbroken run of em dashes. A column
+  // that is empty on every single row reads as a broken feature rather than as
+  // absent data, so it is dropped entirely and explained below the table.
+  // Nothing is invented to fill it: this hides an empty column, it does not
+  // manufacture a number. (docs/TECHNICAL_DEBT.md F4 tracks the backend field
+  // that would let it render for real.)
+  const hasAnyValue = useMemo(
+    () => holdings.some((holding) => computeValue(holding) !== null),
+    [holdings],
+  );
+
   const sorted = useMemo(() => {
     const rows = holdings.map((holding) => ({
       holding,
@@ -111,17 +124,20 @@ export function HoldingsTable({ holdings }: { holdings: Holding[] }) {
   return (
     // overflow-x-auto so the table scrolls inside its own container on mobile
     // rather than forcing the whole page sideways.
+    <>
     <div className="max-h-[28rem] overflow-auto rounded-xl border border-border">
       <table className="w-full min-w-[34rem] text-body-sm">
         <caption className="sr-only">
-          Holdings, sortable by symbol, sector, quantity and value
+          {hasAnyValue
+            ? "Holdings, sortable by symbol, sector, quantity and value"
+            : "Holdings, sortable by symbol, sector and quantity"}
         </caption>
         <thead className="sticky top-0 z-10 bg-bg-surface">
           <tr className="border-b border-border-strong">
             <SortableHeader columnKey="symbol" label="Symbol" />
             <SortableHeader columnKey="sector" label="Sector" />
             <SortableHeader columnKey="quantity" label="Qty" align="right" />
-            <SortableHeader columnKey="value" label="Value" align="right" />
+            {hasAnyValue && <SortableHeader columnKey="value" label="Value" align="right" />}
           </tr>
         </thead>
         <tbody>
@@ -133,9 +149,16 @@ export function HoldingsTable({ holdings }: { holdings: Holding[] }) {
               <th scope="row" className="px-4 py-3 text-left font-medium text-text-primary">
                 {holding.symbol}
                 {holding.exchange && (
-                  <span className="ml-1.5 font-mono text-caption font-normal text-text-tertiary">
-                    {holding.exchange}
-                  </span>
+                  <>
+                    {/* A real space, not just the margin below. `ml-1.5` separates
+                        these visually but leaves no whitespace in the text, so the
+                        cell's textContent was "BETANSE" — which is what a screen
+                        reader announces and what a user gets when they copy the
+                        symbol out to look it up. */}{" "}
+                    <span className="ml-1.5 font-mono text-caption font-normal text-text-tertiary">
+                      {holding.exchange}
+                    </span>
+                  </>
                 )}
               </th>
               <td className="px-4 py-3 text-text-secondary">
@@ -160,13 +183,22 @@ export function HoldingsTable({ holdings }: { holdings: Holding[] }) {
               <td className="px-4 py-3 text-right font-mono text-text-primary">
                 {formatQuantity(Number(holding.quantity))}
               </td>
-              <td className="px-4 py-3 text-right font-mono text-text-primary">
-                {value !== null ? formatCurrency(value) : "—"}
-              </td>
+              {hasAnyValue && (
+                <td className="px-4 py-3 text-right font-mono text-text-primary">
+                  {value !== null ? formatCurrency(value) : "—"}
+                </td>
+              )}
             </tr>
           ))}
         </tbody>
       </table>
     </div>
+    {!hasAnyValue && (
+      <p className="mt-3 text-caption text-text-tertiary">
+        Position values aren&rsquo;t shown for this portfolio — public disclosures report
+        quantities held, not the price they were bought at.
+      </p>
+    )}
+    </>
   );
 }

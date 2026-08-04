@@ -31,7 +31,15 @@ const plexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Nexarch — Portfolio Identity for Indian Investors",
+  // `template` lets each route set only its own name — every product page then
+  // reads "<Page> — Nexarch" in the tab, browser history and bookmarks. Before
+  // this, all nine routes shared one title, so a user with several tabs open
+  // (the comparison flow actively encourages that) could not tell them apart,
+  // and screen readers announced the same string on every navigation.
+  title: {
+    default: "Nexarch — Portfolio Identity for Indian Investors",
+    template: "%s — Nexarch",
+  },
   description:
     "Connect your brokerage account to generate a verified investing profile. " +
     "Browse investors by strategy, diversification, and consistency — not follower count.",

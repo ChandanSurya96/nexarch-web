@@ -5,6 +5,15 @@ vi.mock("@/lib/hooks/usePortfolioHistory", () => ({
   usePortfolioHistory: () => ({ data: [] }),
 }));
 
+// Stubbed rather than wrapped in a QueryClientProvider, matching how this file
+// already isolates the component's other query. Returning an empty list is the
+// stricter setup: it forces the strategy-label assertions below down the
+// local-categorization and humanize paths rather than letting a fixture name
+// satisfy them.
+vi.mock("@/lib/hooks/useStrategyCategories", () => ({
+  useStrategyCategories: () => ({ data: [] }),
+}));
+
 import { PortfolioProfileView } from "@/components/portfolio/PortfolioProfileView";
 import {
   PortfolioHealth,
@@ -141,11 +150,16 @@ describe("PortfolioProfileView strategy tag explanations", () => {
         isOwner={false}
       />
     );
-    const badge = screen.getByText("low-risk");
+    // The badge shows the category's display name, not its slug. Asserting on
+    // "Low-risk" and explicitly denying "low-risk" is what makes this a
+    // regression test: rendering the raw slug fails on the second assertion
+    // even if the tooltip is still wired up correctly.
+    const badge = screen.getByText("Low-risk");
     expect(badge).toHaveAttribute(
       "title",
       "Annualized volatility of 10.0% is at or below the 15% threshold."
     );
+    expect(screen.queryByText("low-risk")).toBeNull();
   });
 
   it("renders a manually-curated tag with no title when there's no matching explanation", () => {
@@ -165,6 +179,12 @@ describe("PortfolioProfileView strategy tag explanations", () => {
         isOwner={false}
       />
     );
-    expect(screen.getByText("value")).not.toHaveAttribute("title");
+    // Library portfolios carry manually-curated tags and an empty
+    // categorization array, so there is no display name to resolve against.
+    // The slug is reformatted rather than printed raw — this covers the
+    // fallback branch, which is the only path a Public Investor Library
+    // portfolio ever takes.
+    expect(screen.getByText("Value")).not.toHaveAttribute("title");
+    expect(screen.queryByText("value")).toBeNull();
   });
 });

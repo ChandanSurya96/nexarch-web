@@ -10,6 +10,7 @@ import { Eyebrow, Metric } from "@/components/ui/Metric";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { formatDate } from "@/lib/format";
 import { useFollow, useUnfollow } from "@/lib/hooks/useFollow";
+import { useStrategyLabels } from "@/lib/strategyLabels";
 import { InvestorCardData } from "@/lib/types/investorCard";
 
 const VERIFIED_TOOLTIP = "Verified: holdings data came from an authenticated broker connection.";
@@ -48,6 +49,7 @@ export function InvestorCard({
   viewerPortfolioId = null,
 }: InvestorCardProps) {
   const { user } = useAuth();
+  const strategyLabel = useStrategyLabels();
   const follow = useFollow(investor.portfolioId ?? "");
   const unfollow = useUnfollow(investor.portfolioId ?? "");
 
@@ -102,7 +104,7 @@ export function InvestorCard({
           <div className="mt-4 flex flex-wrap gap-1.5">
             {investor.strategyTags.map((tag) => (
               <Badge key={tag} variant="tag">
-                {tag}
+                {strategyLabel(tag)}
               </Badge>
             ))}
           </div>
