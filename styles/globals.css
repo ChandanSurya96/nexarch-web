@@ -116,6 +116,36 @@ summary {
   touch-action: manipulation;
 }
 
+/* ── Touch target floor ──────────────────────────────────────────────────── */
+/* Controls are sized for a mouse: nav links render at 30px, filter chips at
+   31px, Follow at 32px. That is comfortable with a cursor and cramped with a
+   thumb — Apple HIG and Material both put the floor at 44px, and WCAG 2.5.5
+   agrees. Raising it unconditionally would coarsen a desktop UI that has no
+   such problem, so the floor applies only where the primary input is actually
+   imprecise.
+   `min-height` rather than `height` so it can only ever grow a control, and
+   the flex centring these already use keeps the label optically centred in the
+   larger box.
+   The landing page is excluded: it is matched to a Figma spec (ADR-049), and
+   silently growing its controls on phones would break that match. */
+@media (pointer: coarse) {
+  button,
+  select,
+  nav a,
+  [role="button"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  .landing button,
+  .landing select,
+  .landing a,
+  .landing [role="button"] {
+    min-height: 0;
+    min-width: 0;
+  }
+}
+
 /* Headings set their own wrap: balance keeps a two-line hero from leaving a
    single orphaned word on line two. */
 h1,

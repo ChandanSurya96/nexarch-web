@@ -38,6 +38,23 @@ export function PortfolioComparisonView({ comparison }: PortfolioComparisonViewP
   const allocations = [entryA, entryB].map((e) => e.analytics.sectorAllocation ?? {});
   const bothHaveAllocation = allocations.every((a) => Object.keys(a).length > 0);
 
+  // A row renders "Not comparable" when its delta is null, which happens when
+  // either side is missing the figure. If that is true of every row, the table
+  // carries no information at all and needs explaining rather than presenting.
+  // Checked against `a`/`b` too, not just `delta`: a pair where one side has a
+  // value is still worth showing, and only an entirely blank table qualifies.
+  const metricDiffs = [
+    totalValue,
+    health.diversificationScore,
+    health.sectorConcentrationHhi,
+    health.portfolioAgeDays,
+    health.holdingCount,
+    health.volatility,
+  ];
+  const anyMetricComparable = metricDiffs.some(
+    (d) => d.delta !== null || d.a !== null || d.b !== null,
+  );
+
   const notableSectorDiffs = Object.entries(sectorAllocation)
     .filter(([, diff]) => diff.delta !== null && Math.abs(diff.delta) >= 0.01)
     .sort((a, b) => Math.abs(b[1].delta ?? 0) - Math.abs(a[1].delta ?? 0));
@@ -83,6 +100,21 @@ export function PortfolioComparisonView({ comparison }: PortfolioComparisonViewP
 
       {/* ── Metrics ───────────────────────────────────────────────────────── */}
       <PageSection title="Health & value" titleAside="Differences are shown without judgment">
+        {/* Every metric reads "—  Not comparable" when neither side has
+            analytics, which is the normal case for two Public Investor Library
+            portfolios: analytics are computed during a broker sync and seeded
+            portfolios never sync (docs/TECHNICAL_DEBT.md F4). Six empty rows
+            with no explanation read as a broken feature — the same failure the
+            holdings Value column had — so the reason is stated once, above the
+            table. The table itself stays: it shows which metrics a comparison
+            covers, which is worth seeing even when this pair can't fill them. */}
+        {!anyMetricComparable && (
+          <p className="mb-4 rounded-lg border border-border bg-bg-surface/40 px-4 py-3 text-body-sm leading-relaxed text-text-secondary">
+            Neither of these portfolios has health metrics yet. Both are rebuilt from public
+            disclosures rather than synced from a broker, and these figures are calculated during a
+            sync. Compare a broker-verified portfolio to see them filled in.
+          </p>
+        )}
         <div className="overflow-x-auto rounded-xl border border-border">
           {/* table-fixed is load-bearing, not cosmetic: with the default
               `auto` layout the browser sizes columns by content, so the
